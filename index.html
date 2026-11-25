@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Hoe goed ken jij GitHub?</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F3F5F9;
+    --surface: #FFFFFF;
+    --ink: #18233A;
+    --muted: #5B6478;
+    --line: #D5DAE3;
+    --branch: #6D4AE0;
+    --good: #1A7F4B;
+    --good-soft: #E3F4EA;
+    --bad: #B8460F;
+    --bad-soft: #FBEBE2;
+    color-scheme: light;
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #10172A;
+      --surface: #1A233A;
+      --ink: #E8ECF5;
+      --muted: #A3ACC0;
+      --line: #34405C;
+      --branch: #A08BFF;
+      --good: #4CC487;
+      --good-soft: #17352A;
+      --bad: #F08A55;
+      --bad-soft: #3B2219;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #10172A; --surface: #1A233A; --ink: #E8ECF5; --muted: #A3ACC0; --line: #34405C;
+    --branch: #A08BFF; --good: #4CC487; --good-soft: #17352A; --bad: #F08A55; --bad-soft: #3B2219;
+    color-scheme: dark;
+  }
+  *, *::before, *::after { box-sizing: inherit; }
+  html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size: 1.0625rem;
+    line-height: 1.55;
+  }
+  main {
+    max-width: 42rem;
+    margin: 0 auto;
+    padding: 3rem 1.25rem 4rem;
+  }
+  h1, h2 {
+    font-family: "Bricolage Grotesque", "Atkinson Hyperlegible", system-ui, sans-serif;
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    margin: 0;
+  }
+  h1 { font-size: clamp(2.2rem, 7vw, 3.4rem); }
+  .intro { color: var(--muted); margin: 0.75rem 0 2.5rem; max-width: 34rem; }
+
+  /* Voortgang als commit-graaf */
+  .graph {
+    position: relative;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 0 0 0.5rem;
+    padding: 0 2px;
+    height: 28px;
+  }
+  .graph::before {
+    content: "";
+    position: absolute;
+    left: 10px; right: 10px; top: 50%;
+    height: 3px;
+    background: var(--line);
+    transform: translateY(-50%);
+  }
+  .graph .fill {
+    position: absolute;
+    left: 10px; top: 50%;
+    height: 3px;
+    background: var(--branch);
+    transform: translateY(-50%);
+    width: 0;
+    transition: width 0.4s ease;
+  }
+  .dot {
+    position: relative;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--bg);
+    border: 3px solid var(--line);
+    transition: transform 0.25s ease;
+  }
+  .dot.current { border-color: var(--branch); transform: scale(1.25); }
+  .dot.good { background: var(--good); border-color: var(--good); }
+  .dot.bad { background: var(--bg); border-color: var(--bad); }
+  .dot.bad::after {
+    content: "";
+    position: absolute;
+    inset: 3px;
+    background: linear-gradient(45deg, transparent 42%, var(--bad) 42%, var(--bad) 58%, transparent 58%);
+  }
+  .progress-text { color: var(--muted); font-size: 0.95rem; margin: 0 0 1.75rem; }
+
+  .question {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-left: 4px solid var(--branch);
+    padding: 1.75rem 1.5rem;
+  }
+  .question h2 { font-size: clamp(1.4rem, 4.5vw, 1.8rem); margin-bottom: 1.25rem; }
+  .options { display: grid; gap: 0.6rem; }
+  .option {
+    font: inherit;
+    color: var(--ink);
+    text-align: left;
+    background: var(--bg);
+    border: 2px solid var(--line);
+    border-radius: 6px;
+    padding: 0.8rem 1rem;
+    cursor: pointer;
+  }
+  .option:hover:not(:disabled) { border-color: var(--branch); }
+  .option:disabled { cursor: default; }
+  .option.correct { border-color: var(--good); background: var(--good-soft); }
+  .option.wrong { border-color: var(--bad); background: var(--bad-soft); }
+  .option.dim { opacity: 0.55; }
+
+  .feedback {
+    margin-top: 1.25rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--line);
+  }
+  .feedback strong { display: block; margin-bottom: 0.25rem; }
+  .feedback.is-good strong { color: var(--good); }
+  .feedback.is-bad strong { color: var(--bad); }
+  .feedback p { margin: 0 0 1.25rem; }
+
+  .btn {
+    font: inherit;
+    font-weight: 700;
+    color: #FFFFFF;
+    background: var(--branch);
+    border: 0;
+    border-radius: 6px;
+    padding: 0.75rem 1.4rem;
+    cursor: pointer;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .btn { color: #10172A; }
+  }
+  :root[data-theme="dark"] .btn { color: #10172A; }
+  .btn:hover { filter: brightness(1.08); }
+
+  button:focus-visible { outline: 3px solid var(--branch); outline-offset: 3px; }
+
+  /* Uitslag */
+  .score {
+    font-family: "Bricolage Grotesque", system-ui, sans-serif;
+    font-size: clamp(3.5rem, 14vw, 5.5rem);
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -0.03em;
+    margin: 0.5rem 0 0.75rem;
+  }
+  .score span { color: var(--muted); font-size: 0.45em; font-weight: 500; }
+  .review { list-style: none; padding: 0; margin: 1.75rem 0 2rem; border-top: 1px solid var(--line); }
+  .review li {
+    display: flex; gap: 0.75rem;
+    padding: 0.7rem 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .review .mark { font-weight: 700; flex: 0 0 1.2rem; }
+  .review .ok { color: var(--good); }
+  .review .nok { color: var(--bad); }
+  .review small { display: block; color: var(--muted); }
+
+  footer { color: var(--muted); font-size: 0.9rem; margin-top: 3rem; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .graph .fill, .dot { transition: none; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <h1>Hoe goed ken jij GitHub?</h1>
+  <p class="intro">Tien vragen over Git, GitHub en het online zetten van een website. Elke beantwoorde vraag wordt een commit op je eigen tak.</p>
+
+  <div class="graph" id="graph" aria-hidden="true"><div class="fill" id="fill"></div></div>
+  <p class="progress-text" id="progress" aria-live="polite"></p>
+
+  <section id="app"></section>
+
+  <footer>Gemaakt met Claude, gepubliceerd via GitHub Pages.</footer>
+</main>
+
+<script>
+  const questions = [
+    {
+      q: "Wat is het verschil tussen Git en GitHub?",
+      options: [
+        "Er is geen verschil, het zijn twee namen voor hetzelfde",
+        "Git is een programma voor versiebeheer, GitHub is een website die Git-projecten online bewaart",
+        "GitHub is het programma, Git is de website",
+        "Git is voor websites, GitHub is voor apps"
+      ],
+      correct: 1,
+      uitleg: "Git houdt wijzigingen bij, ook op je eigen computer. GitHub is een online dienst waar je die Git-projecten bewaart en deelt."
+    },
+    {
+      q: "Wat is een repository (repo)?",
+      options: [
+        "Een projectmap met alle bestanden én de volledige wijzigingsgeschiedenis",
+        "Een back-up van je hele computer",
+        "Een foutmelding van GitHub",
+        "Een betaald GitHub-abonnement"
+      ],
+      correct: 0,
+      uitleg: "Een repo is de ‘map’ van je project. Bij je website staat daar bijvoorbeeld index.html in, plus alle eerdere versies."
+    },
+    {
+      q: "Wat is een commit?",
+      options: [
+        "Een belofte om een project af te maken",
+        "Het verwijderen van een bestand",
+        "Een vastgelegde momentopname van wijzigingen, met een korte omschrijving",
+        "Een uitnodiging om samen te werken"
+      ],
+      correct: 2,
+      uitleg: "Elke commit is een punt in de geschiedenis waar je later naar terug kunt. Precies zoals de bolletjes bovenaan deze pagina."
+    },
+    {
+      q: "Waarvoor gebruik je een branch?",
+      options: [
+        "Om je project te verwijderen",
+        "Om op een aparte lijn wijzigingen te maken zonder de hoofdversie aan te raken",
+        "Om je wachtwoord te wijzigen",
+        "Om bestanden te comprimeren"
+      ],
+      correct: 1,
+      uitleg: "Een branch (tak) is een zijspoor. Je kunt er veilig experimenteren; de hoofdversie (meestal ‘main’) blijft intact."
+    },
+    {
+      q: "Wat is een pull request?",
+      options: [
+        "Een verzoek om een bestand te downloaden",
+        "Een melding dat je site offline is",
+        "Een manier om iemand te blokkeren",
+        "Een voorstel om wijzigingen uit een branch samen te voegen, zodat anderen ze eerst kunnen bekijken"
+      ],
+      correct: 3,
+      uitleg: "Met een pull request vraag je: ‘wil je mijn wijzigingen overnemen?’ Collega’s kunnen meekijken en commentaar geven voordat het wordt samengevoegd."
+    },
+    {
+      q: "Wat doet GitHub Pages?",
+      options: [
+        "Het host gratis een statische website rechtstreeks vanuit je repository",
+        "Het maakt automatisch een website voor je",
+        "Het is een tekstverwerker van GitHub",
+        "Het telt hoeveel pagina’s je code heeft"
+      ],
+      correct: 0,
+      uitleg: "Zet je HTML-bestanden in een repo, zet Pages aan bij Settings, en je site staat online op jouwnaam.github.io."
+    },
+    {
+      q: "Welk bestand toont GitHub Pages standaard als startpagina?",
+      options: [
+        "start.html",
+        "home.txt",
+        "index.html",
+        "README.pdf"
+      ],
+      correct: 2,
+      uitleg: "Webservers zoeken standaard naar index.html. Daarom heet het bestand van deze quiz ook zo."
+    },
+    {
+      q: "Wat betekent ‘clonen’ van een repository?",
+      options: [
+        "Een repo hernoemen",
+        "Een volledige kopie, inclusief geschiedenis, naar je eigen computer halen",
+        "Een repo openbaar maken",
+        "Twee repo’s samenvoegen"
+      ],
+      correct: 1,
+      uitleg: "Na het clonen kun je lokaal werken, en je wijzigingen later weer terugsturen naar GitHub."
+    },
+    {
+      q: "Wat doe je met een ‘push’?",
+      options: [
+        "Je stuurt commits van je eigen computer naar GitHub",
+        "Je haalt de nieuwste versie van GitHub binnen",
+        "Je stuurt een notificatie naar collega’s",
+        "Je zet je website offline"
+      ],
+      correct: 0,
+      uitleg: "Push = versturen naar GitHub. Het tegenovergestelde is ‘pull’: wijzigingen van GitHub ophalen."
+    },
+    {
+      q: "Kan GitHub Pages een website draaien met een database en inlogfunctie?",
+      options: [
+        "Ja, alles kan op GitHub Pages",
+        "Alleen met een betaald account",
+        "Ja, maar alleen voor maximaal tien gebruikers",
+        "Nee, GitHub Pages serveert alleen statische bestanden zoals HTML, CSS en JavaScript"
+      ],
+      correct: 3,
+      uitleg: "Voor een quiz als deze is dat geen probleem: alles draait in de browser. Voor databases en logins heb je een andere hosting nodig."
+    }
+  ];
+
+  const app = document.getElementById("app");
+  const graph = document.getElementById("graph");
+  const fill = document.getElementById("fill");
+  const progress = document.getElementById("progress");
+
+  let index = 0;
+  let answers = [];
+
+  // Commit-bolletjes aanmaken
+  const dots = questions.map(() => {
+    const d = document.createElement("div");
+    d.className = "dot";
+    graph.appendChild(d);
+    return d;
+  });
+
+  function updateGraph() {
+    dots.forEach((d, i) => {
+      d.className = "dot";
+      if (i < answers.length) d.classList.add(answers[i] === questions[i].correct ? "good" : "bad");
+      if (i === index && index < questions.length) d.classList.add("current");
+    });
+    const steps = questions.length - 1;
+    const done = Math.min(answers.length, steps);
+    fill.style.width = `calc((100% - 20px) * ${done / steps})`;
+  }
+
+  function escapeHtml(s) {
+    const el = document.createElement("div");
+    el.textContent = s;
+    return el.innerHTML;
+  }
+
+  function showQuestion() {
+    const item = questions[index];
+    progress.textContent = `Vraag ${index + 1} van ${questions.length}`;
+    updateGraph();
+
+    app.innerHTML = `
+      <div class="question">
+        <h2 id="q-title">${escapeHtml(item.q)}</h2>
+        <div class="options" role="group" aria-labelledby="q-title">
+          ${item.options.map((o, i) => `<button class="option" data-i="${i}">${escapeHtml(o)}</button>`).join("")}
+        </div>
+        <div id="feedback"></div>
+      </div>`;
+
+    app.querySelectorAll(".option").forEach(btn => {
+      btn.addEventListener("click", () => answer(Number(btn.dataset.i)));
+    });
+  }
+
+  function answer(choice) {
+    const item = questions[index];
+    const isGood = choice === item.correct;
+    answers.push(choice);
+
+    app.querySelectorAll(".option").forEach((btn, i) => {
+      btn.disabled = true;
+      if (i === item.correct) btn.classList.add("correct");
+      else if (i === choice) btn.classList.add("wrong");
+      else btn.classList.add("dim");
+    });
+
+    const last = index === questions.length - 1;
+    const fb = document.getElementById("feedback");
+    fb.className = "feedback " + (isGood ? "is-good" : "is-bad");
+    fb.innerHTML = `
+      <strong>${isGood ? "Goed!" : "Helaas, dat klopt niet."}</strong>
+      <p>${escapeHtml(item.uitleg)}</p>
+      <button class="btn" id="next">${last ? "Bekijk je score" : "Volgende vraag"}</button>`;
+
+    index++;
+    updateGraph();
+    const next = document.getElementById("next");
+    next.addEventListener("click", () => (last ? showResult() : showQuestion()));
+    next.focus();
+  }
+
+  function showResult() {
+    const score = answers.filter((a, i) => a === questions[i].correct).length;
+    progress.textContent = "Klaar!";
+    updateGraph();
+
+    let message;
+    if (score === questions.length) message = "Foutloos. Jij bent klaar om je eigen site te publiceren.";
+    else if (score >= 7) message = "Sterk. De basis van GitHub zit er goed in.";
+    else if (score >= 4) message = "Een mooie start. Lees de uitleg bij de gemiste vragen nog eens door.";
+    else message = "Iedereen begint ergens. Probeer het nog een keer, de uitleg helpt.";
+
+    app.innerHTML = `
+      <h2>Je score</h2>
+      <p class="score">${score}<span> / ${questions.length}</span></p>
+      <p>${message}</p>
+      <ul class="review">
+        ${questions.map((q, i) => {
+          const ok = answers[i] === q.correct;
+          return `<li>
+            <span class="mark ${ok ? "ok" : "nok"}" aria-label="${ok ? "goed" : "fout"}">${ok ? "✓" : "✗"}</span>
+            <span>${escapeHtml(q.q)}${ok ? "" : `<small>Juiste antwoord: ${escapeHtml(q.options[q.correct])}</small>`}</span>
+          </li>`;
+        }).join("")}
+      </ul>
+      <button class="btn" id="restart">Opnieuw spelen</button>`;
+
+    const restart = document.getElementById("restart");
+    restart.addEventListener("click", () => {
+      index = 0;
+      answers = [];
+      showQuestion();
+      app.querySelector(".option").focus();
+    });
+    restart.focus();
+  }
+
+  showQuestion();
+</script>
+</body>
+</html>
